@@ -11,6 +11,9 @@ class Settings:
         self.mongodb_uri: str = self._get_required_env("MONGODB_URI")
         self.database_name: str = os.getenv("DATABASE_NAME", "auth_crud")
         self.api_timeout: str = os.getenv("API_TIMEOUT", "30")
+        self.jwt_secret: str = self._get_required_env("JWT_SECRET")
+        self.jwt_algorithm: str = "HS256"
+        self.jwt_expire_minutes: int = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 
     @staticmethod
     def _get_required_env(key: str) -> str:
