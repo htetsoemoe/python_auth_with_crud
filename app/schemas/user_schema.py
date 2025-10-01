@@ -77,4 +77,45 @@ class UserOut(BaseModel):
                 "is_active": True,
                 "last_login": "2024-01-01T12:00:00Z"
             }
-        }        
+        }
+
+class UserLogin(BaseModel):
+    """User login schema"""
+    username: str = Field(..., description="Username")
+    password: str = Field(..., description="User password")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "username": "john_doe",
+                "password": "SecurePass123"
+            }
+        }
+
+class UserUpdate(BaseModel):
+    """User update schema"""
+    username: Optional[str] = Field(None, description="New username")
+    is_active: Optional[bool] = Field(None, description="Account active user")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "username": "new_username",
+                "is_active": True
+            }
+        }
+
+class TokenResponse(BaseModel):
+    """Token response schema"""
+    access_token: str = Field(..., description="JWT access token")
+    token_type: str = Field("bearer", description="Token type")
+    expires_in: int = Field(..., description="Token expiration time in second")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_type": "bearer",
+                "expires_in": 3600
+            }
+        }
