@@ -74,6 +74,7 @@ async def register_user(user: UserRegister):
 """
 @router.post("/login", response_model=TokenResponse)
 async def login_user(form_data: OAuth2PasswordRequestForm = Depends()) -> TokenResponse:
+
     """Login user with OAuth2 password form"""
     try:
         # Find user by username
@@ -114,4 +115,62 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()) -> TokenR
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
+        )
+    
+"""
+    JSON Input: Expects application/json data with structured payload
+    Custom Schema: Uses UserLogin Pydantic model for validation
+    Enhanced Security: Includes additional checks (user active status)
+    Flexible Structure: Can be extended with additional fields easily
+"""
+@router.post("/login-json", response_model=TokenResponse)
+async def login_user_json(user_login: UserLogin) -> TokenResponse:
+    """Login user with JSON payload (alternative to form-base login)"""
+    try:
+        # Find user by username
+        user = db_manager.db.users.find_one({"username": user_login.username})
+        if not user:
+            logger.warning(f"JSON login attempt with non-existent username: {user_login.username}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password"
+            )
+        
+        # Verify password
+        if not verify_password(user_login.password, user["password"]):
+            logger.warning(f"Invalid password attempt for user: {user_login.username}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password"
+            )
+        
+        # Check if user is active
+        if not user.get("is_active", True):
+            logger.warning(f"JSON login attempt by inactive user: {user_login.username}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is deactivated"
+            )
+        
+        # Update user last login
+        update_operation = UserModel.update_last_login(user["_id"])
+        db_manager.db.users.update_one({"_id": user["_id"]}, update_operation)
+
+        # Create access token
+        token = create_token({"sub": user["username"]})
+
+        logger.info(f"User logged in successfully via JSON: {user_login.username}")
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer",
+            expires_in=settings.jwt_expire_minutes * 60
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during JSON user login: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Login failed. Please try again."
         )
