@@ -60,7 +60,7 @@ class UserRegister(BaseModel):
 
 class UserOut(BaseModel):
     """User output schema for API responses"""
-    id: str = Field(..., description="User ID")
+    id: str = Field(..., description="User ID") # you can add like this ==> alias="_id"
     username: str = Field(..., description="Username")
     created_at: Optional[datetime] = Field(None, description="Account creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")

@@ -32,3 +32,108 @@ class UserService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to retrieve user information"
             )
+        
+    @staticmethod
+    async def get_user_by_id(user_id: str) -> Dict[str, Any]:
+        """Get user by ID"""
+        try:
+            # Validate Object
+            if not UserModel.validate_object_id(user_id):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid user ID format"
+                )
+            
+            # Find user by ID
+            user = db_manager.db.users.find_one(
+                {"_id": ObjectId(user_id)},
+                {"password": 0}, # Exclude password field
+            )
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            
+            # Convert ObjectId to string
+            user["id"] = str(user["_id"])
+            # UserOut Pydantic model expects a field named id, but your MongoDB document has _id instead.
+            # str(user["_id"]) = MongoDB ObjectId (change from ObjectId to string)
+            # user["id"] = UserOut Pydantic model field
+
+            logger.info(f"Retrieved user: {user_id}")
+            return user
+        
+        except HTTPException:
+            raise
+        except PyMongoError as e:
+            logger.error(f"Database error retrieving user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error occured"
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
+        
+    @staticmethod
+    async def get_users_with_pagination(skip: int = 0, limit: int = 10):
+        """Get users with pagination"""
+        try:
+            users_cursor = db_manager.db.users.find(
+                {},
+                {"password": 0}, # Exclude password
+            ).skip(skip).limit(limit)
+
+            users = list(users_cursor) # Change to iterable type
+
+            # Convert ObjectId to string for each user
+            for user in users:
+                user["id"] = str(user["_id"]) 
+            # UserOut Pydantic model expects a field named id, but your MongoDB document has _id instead.
+            # str(user["_id"]) = MongoDB ObjectId (change from ObjectId to string)
+            # user["id"] = UserOut Pydantic model field
+            
+            logger.info(f"Retrieved {len(users)} users (skip={skip}, limit={limit})")
+            return users
+        
+        except PyMongoError as e:
+            logger.error(f"Database error retrieving users: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error occurred"
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving users: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
+        
+    @staticmethod
+    async def get_users_count() -> Dict[str, int]:
+        """Get total count of users"""
+        try:
+            total_count = db_manager.db.users.count_documents({})
+            active_count = db_manager.db.users.count_documents({"is_active": True})
+
+            logger.info(f"User count request - Total: {total_count}, Active: {active_count}")
+            return {
+                "total_users": total_count,
+                "active_users": active_count
+            }
+        except PyMongoError as e:
+            logger.error(f"Database error counting users: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error occurred"
+            )
+        except Exception as e:
+            logger.error(f"Error counting users: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
