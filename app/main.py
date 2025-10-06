@@ -8,7 +8,7 @@ import asyncio
 import logging
 import sys
 from typing import Dict, Any
-from app.api import auth
+from app.api import auth, users
 
 # Configure logging
 logging.basicConfig(
@@ -109,6 +109,7 @@ async def root() -> Dict[str, str]:
 
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(users.router, prefix="/users", tags=["Users"])
 
 if __name__ == "__main__":
     # ASGI, or Asynchronous Server Gateway Interface, defines a standard interface 

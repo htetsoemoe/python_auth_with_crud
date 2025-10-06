@@ -37,6 +37,8 @@ def decode_token(token: str) -> Optional[Dict[Any, Any]]:
             logger.warning("Invalid token type")
             return None
         
+        return payload
+        
     except ExpiredSignatureError:
         logger.warning("Token has expired")
         return None
