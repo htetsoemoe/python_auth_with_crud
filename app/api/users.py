@@ -39,3 +39,21 @@ async def get_user_by_id(
     """Get user by ID"""
     user_data = await UserService.get_user_by_id(user_id)
     return UserOut(**user_data)
+
+@router.put("/{user_id}", response_model=UserOut)
+async def update_user(
+    user_id: str,
+    user_update: UserUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a user"""
+    user_data = await UserService.update_user_by_id(user_id, user_update)
+    return UserOut(**user_data)
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def deactivate_user(
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Deactivate user by id"""
+    await UserService.deactivate_user_by_id(user_id)

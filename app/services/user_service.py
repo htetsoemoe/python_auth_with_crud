@@ -137,3 +137,116 @@ class UserService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal server error"
             )
+        
+    @staticmethod
+    async def update_user_by_id(user_id: str, user_update: UserUpdate) -> Dict[str, Any]:
+        """Update user by ID (admin function)"""
+        try:
+            # Validate ObjectId
+            if not UserModel.validate_object_id(user_id):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid user ID format"
+                )
+            
+            # Check if user exists
+            existing_user = db_manager.db.users.find_one({"_id": ObjectId(user_id)})
+            if not existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            
+            # Prepare user update data
+            update_data = {}
+            if user_update.username is not None:
+                update_data["username"] = user_update.username
+            if user_update.is_active is not None:
+                update_data["is_active"] = user_update.is_active
+
+            # Add updated timestamp
+            update_data["updated_at"] = datetime.utcnow()
+
+            # Update user 
+            result = db_manager.db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$set": update_data}
+            )
+
+            # Get updated user with user_id
+            updated_user = db_manager.db.users.find_one(
+                {"_id": ObjectId(user_id)},
+                {"password": 0}
+            )
+
+            # Convert ObjectId to string
+            updated_user["id"] = str(updated_user["_id"])
+            logger.info(f"User updated: {user_id}")
+            return updated_user
+        
+        except HTTPException:
+            raise
+        except PyMongoError as e:
+            logger.error(f"Database error updating user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error occurred"
+            )
+        except Exception as e:
+            logger.error(f"Error updating user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
+        
+    @staticmethod
+    async def deactivate_user_by_id(user_id: str) -> None:
+        """Deactivate user by ID"""
+        try:
+            # Validate ObjectId
+            if not UserModel.validate_object_id(user_id):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid user ID"
+                )
+            
+            # Check if user exists
+            existing_user = db_manager.db.users.find_one({"_id": ObjectId(user_id)})
+            if not existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            
+            # Deactivate User by ID
+            result = db_manager.db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {
+                    "$set": {
+                        "is_active": False,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            if result.modified_count == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User already deactivated"
+                )
+            
+            logger.info(f"User deactivated: {user_id}")
+        except HTTPException:
+            raise
+        except PyMongoError as e:
+            logger.error(f"Database error deleting user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error occurred"
+            )
+        except Exception as e:
+            logger.error(f"Error deleting user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
